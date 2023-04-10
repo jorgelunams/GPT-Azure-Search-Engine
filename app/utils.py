@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 import docx2txt
 import streamlit as st
 from embeddings import OpenAIEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.docstore.document import Document
@@ -86,19 +87,25 @@ def text_to_docs(text: str | List[str]) -> List[Document]:
 
 
 # @st.cache_data(show_spinner=False)
-def embed_docs(docs: List[Document]) -> VectorStore:
+def embed_docs(docs: List[Document], language: str) -> VectorStore:
     """Embeds a list of Documents and returns a FAISS index"""
-
-    if not st.session_state.get("AZURE_OPENAI_API_KEY"):
-        raise AuthenticationError(
-            "You need to set the env variable AZURE_OPENAI_API_KEY"
-        )
+ 
+    # Select the Embedder model
+    if len(docs) < 50:
+        # OpenAI models are accurate but slower
+        embedder = OpenAIEmbeddings(document_model_name="text-embedding-ada-002", query_model_name="text-embedding-ada-002") 
     else:
-        # Embed the chunks
-        embeddings = OpenAIEmbeddings() 
-        index = FAISS.from_documents(docs, embeddings)
+        # Bert based models are faster (3x-10x) but not as accurate
+        # For Multiple language support we need to use a multilingual model. But if English only is the requirement, use "multi-qa-MiniLM-L6-cos-v1" for a good trade-off between quality and speed
+        # The fastest english model though is "all-MiniLM-L12-v2"
+        if language == "en":
+            embedder = HuggingFaceEmbeddings(model_name = 'all-MiniLM-L12-v2')
+        else:
+            embedder = HuggingFaceEmbeddings(model_name = 'distiluse-base-multilingual-cased-v2')
 
-        return index
+    index = FAISS.from_documents(docs, embedder)
+
+    return index
 
 
 # @st.cache_data
@@ -107,7 +114,7 @@ def search_docs(index: VectorStore, query: str) -> List[Document]:
     and returns a list of Documents."""
 
     # Search for similar chunks
-    docs = index.similarity_search(query, k=2)
+    docs = index.similarity_search(query, k=4)
     return docs
 
 
@@ -124,7 +131,7 @@ def get_answer(docs: List[Document],
 
     # Get the answer
     
-    if deployment == "gpt-35-turbo":
+    if (deployment in ["gpt-35-turbo", "gpt-4", "gpt-4-32k"]) :
         llm = AzureChatOpenAI(deployment_name=deployment, temperature=temperature, max_tokens=max_tokens)
     else:
         llm = AzureOpenAI(deployment_name=deployment, temperature=temperature, max_tokens=max_tokens)
@@ -132,8 +139,10 @@ def get_answer(docs: List[Document],
     chain = load_qa_with_sources_chain(llm, chain_type=chain_type)
     
     answer = chain( {"input_documents": docs, "question": query}, return_only_outputs=True)
-    
+    #answer = chain( {"input_documents": docs, "question": query, "language": language}, return_only_outputs=True)
+
     return answer
+
 
 
 # @st.cache_data

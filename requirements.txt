@@ -2,9 +2,9 @@ streamlit
 langchain
 faiss-cpu
 openai
+tiktoken
 docx2txt
 pillow
 pypdf
 tenacity
-ipython
-tiktoken
+sentence_transformers

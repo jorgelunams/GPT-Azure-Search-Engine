@@ -89,7 +89,25 @@
         "properties": {
           "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanPortalName'))]",
           "siteConfig": {
-            "linuxFxVersion": "[parameters('linuxFxVersion')]"
+            "linuxFxVersion": "[parameters('linuxFxVersion')]",
+            "appSettings": [
+                {
+                  "name": "AZURE_SEARCH_ENDPOINT",
+                  "value": ""
+                },
+                {
+                  "name": "AZURE_SEARCH_KEY",
+                  "value": ""
+                },
+                {
+                  "name": "AZURE_OPENAI_ENDPOINT",
+                  "value": ""
+                },
+                {
+                  "name": "AZURE_OPENAI_API_KEY",
+                  "value": ""
+                }
+            ]
           }
         },
         "resources": [
@@ -117,7 +135,7 @@
             "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
         ],
         "properties": {
-            "appCommandLine": "python -m streamlit run app/main.py --server.port 8000 --server.address 0.0.0.0"
+            "appCommandLine": "python -m streamlit run app/Home.py --server.port 8000 --server.address 0.0.0.0"
         }
     }
     ]
